@@ -27,6 +27,9 @@ class StoreSalesPageRequest extends FormRequest
             'images.*'            => 'image|mimes:jpeg,png,jpg,webp|max:2048',
             'language'            => 'nullable|string|in:id,en',
             'currency'            => 'nullable|string|in:IDR,USD',
+            'seo'                 => 'nullable|array',
+            'seo.title'           => 'nullable|string|max:255',
+            'seo.description'     => 'nullable|string',
         ];
     }
 }

@@ -107,6 +107,28 @@ class SalesPageController extends Controller
     }
 
     /**
+     * Generate only SEO metadata preview.
+     */
+    public function generateSeo(Request $request, SalesPage $salesPage): JsonResponse
+    {
+        $this->authorize('update', $salesPage);
+
+        try {
+            $seo = $this->service->generateSeoOnly($salesPage, $request->all());
+            
+            return response()->json([
+                'message' => 'AI SEO generated successfully.',
+                'data'    => $seo,
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => 'AI SEO generation failed.',
+                'error'   => $e->getMessage(),
+            ], 502);
+        }
+    }
+
+    /**
      * Delete a sales page.
      */
     public function destroy(SalesPage $salesPage): JsonResponse

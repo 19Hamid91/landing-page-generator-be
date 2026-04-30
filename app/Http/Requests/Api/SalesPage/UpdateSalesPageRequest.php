@@ -27,6 +27,9 @@ class UpdateSalesPageRequest extends FormRequest
             'images.*'            => 'nullable', // Can be file or string (URL)
             'language'            => 'nullable|string|in:id,en',
             'currency'            => 'nullable|string|in:IDR,USD',
+            'seo'                 => 'nullable|array',
+            'seo.title'           => 'nullable|string|max:255',
+            'seo.description'     => 'nullable|string',
             'ai_output'           => 'nullable', // Will be JSON string in FormData
             'regenerate'          => 'boolean',
         ];

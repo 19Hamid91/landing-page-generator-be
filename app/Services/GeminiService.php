@@ -110,7 +110,9 @@ JSON STRUCTURE (Return only valid JSON):
   "features_breakdown": [
     {"feature": "Feature Title", "explanation": "Value-driven explanation"}
   ],
-  "cta_text": "Action-oriented button text"
+  "cta_text": "Action-oriented button text",
+  "seo_title": "SEO Optimized Page Title",
+  "seo_description": "Search engine meta description"
 }
 PROMPT;
     }

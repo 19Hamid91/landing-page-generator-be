@@ -37,6 +37,10 @@ class SalesPageService
             'images'              => $data['images'] ?? [],
             'language'            => $data['language'] ?? 'en',
             'currency'            => $data['currency'] ?? 'USD',
+            'seo'                 => [
+                'title'       => !empty($data['seo']['title']) ? $data['seo']['title'] : ($aiOutput['seo_title'] ?? $data['product_name']),
+                'description' => !empty($data['seo']['description']) ? $data['seo']['description'] : ($aiOutput['seo_description'] ?? $data['product_description']),
+            ],
         ]);
     }
 
@@ -57,7 +61,16 @@ class SalesPageService
         $salesPage->fill($data);
 
         if (isset($data['regenerate']) && $data['regenerate']) {
-            $salesPage->ai_output = $this->gemini->generateSalesPage($salesPage->toArray());
+            $aiOutput = $this->gemini->generateSalesPage($salesPage->toArray());
+            $salesPage->ai_output = $aiOutput;
+            
+            // Only update SEO if not manually provided in the request
+            if (empty($data['seo']['title']) && empty($data['seo']['description'])) {
+                $salesPage->seo = [
+                    'title'       => $aiOutput['seo_title'] ?? $salesPage->product_name,
+                    'description' => $aiOutput['seo_description'] ?? $salesPage->product_description,
+                ];
+            }
         }
 
         $salesPage->save();
@@ -73,6 +86,20 @@ class SalesPageService
         $generationData = array_merge($salesPage->toArray(), $updatedData);
         
         return $this->gemini->generateSalesPage($generationData);
+    }
+
+    /**
+     * Generate only SEO metadata.
+     */
+    public function generateSeoOnly(SalesPage $salesPage, array $updatedData = []): array
+    {
+        $generationData = array_merge($salesPage->toArray(), $updatedData);
+        $aiOutput = $this->gemini->generateSalesPage($generationData);
+
+        return [
+            'title'       => $aiOutput['seo_title'] ?? $generationData['product_name'],
+            'description' => $aiOutput['seo_description'] ?? $generationData['product_description'],
+        ];
     }
 
     /**

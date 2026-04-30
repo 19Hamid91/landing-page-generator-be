@@ -29,6 +29,7 @@ class SalesPageResource extends JsonResource
             }, $this->images ?? []),
             'language'            => $this->language,
             'currency'            => $this->currency,
+            'seo'                 => $this->seo,
             'created_at'          => $this->created_at,
             'updated_at'          => $this->updated_at,
         ];

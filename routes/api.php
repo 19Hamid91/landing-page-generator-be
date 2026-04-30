@@ -34,5 +34,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Sales Pages CRUD
     Route::post('/sales-pages/{sales_page}/generate', [SalesPageController::class, 'generatePreview']);
+    Route::post('/sales-pages/{sales_page}/generate-seo', [SalesPageController::class, 'generateSeo']);
     Route::apiResource('sales-pages', SalesPageController::class);
 });

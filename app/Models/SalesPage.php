@@ -22,6 +22,7 @@ class SalesPage extends Model
         'images',
         'language',
         'currency',
+        'seo',
     ];
 
     /**
@@ -31,6 +32,7 @@ class SalesPage extends Model
         'features'   => 'array',
         'usp'        => 'array',
         'images'     => 'array',
+        'seo'        => 'array',
         'ai_output'  => 'array',
         'price'      => 'decimal:2',
     ];
