@@ -33,5 +33,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', fn ($request) => response()->json($request->user()));
 
     // Sales Pages CRUD
+    Route::post('/sales-pages/{sales_page}/generate', [SalesPageController::class, 'generatePreview']);
     Route::apiResource('sales-pages', SalesPageController::class);
 });

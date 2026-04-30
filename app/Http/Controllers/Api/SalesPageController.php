@@ -98,7 +98,7 @@ class SalesPageController extends Controller
     }
 
     /**
-     * Update product details and optionally re-generate AI copy.
+     * Update product details and AI copy.
      */
     public function update(Request $request, SalesPage $salesPage): JsonResponse
     {
@@ -118,12 +118,13 @@ class SalesPageController extends Controller
             'images.*'            => 'url',
             'language'            => 'nullable|string|in:id,en',
             'currency'            => 'nullable|string|in:IDR,USD',
-            'regenerate'          => 'boolean', // pass true to re-generate AI copy
+            'ai_output'           => 'nullable|array', // Allow manual update of AI content
+            'regenerate'          => 'boolean',        // pass true to re-generate AI copy and SAVE it immediately
         ]);
 
         $salesPage->fill($validated);
 
-        // Re-generate AI output if requested
+        // Re-generate AI output if requested (and save immediately)
         if ($request->boolean('regenerate', false)) {
             try {
                 $salesPage->ai_output = $this->gemini->generateSalesPage($salesPage->toArray());
@@ -141,6 +142,34 @@ class SalesPageController extends Controller
             'message' => 'Sales page updated successfully.',
             'data'    => $salesPage,
         ]);
+    }
+
+    /**
+     * Generate AI copy preview without saving.
+     */
+    public function generatePreview(Request $request, SalesPage $salesPage): JsonResponse
+    {
+        $this->authorizeOwner($request, $salesPage);
+
+        // Optionally take updated data to generate from
+        $data = $request->all();
+        
+        // Merge with existing data to ensure all required fields for generation are present
+        $generationData = array_merge($salesPage->toArray(), $data);
+
+        try {
+            $aiOutput = $this->gemini->generateSalesPage($generationData);
+            
+            return response()->json([
+                'message' => 'AI preview generated successfully.',
+                'data'    => $aiOutput,
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => 'AI preview generation failed.',
+                'error'   => $e->getMessage(),
+            ], 502);
+        }
     }
 
     /**
