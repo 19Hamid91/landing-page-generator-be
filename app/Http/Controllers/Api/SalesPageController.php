@@ -3,60 +3,49 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\SalesPage\StoreSalesPageRequest;
+use App\Http\Requests\Api\SalesPage\UpdateSalesPageRequest;
+use App\Http\Resources\SalesPageResource;
 use App\Models\SalesPage;
-use App\Services\GeminiService;
+use App\Services\SalesPageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Exception;
 
 class SalesPageController extends Controller
 {
-    public function __construct(protected GeminiService $gemini) {}
+    public function __construct(protected SalesPageService $service) {}
 
     /**
      * List all sales pages belonging to the authenticated user.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
         $salesPages = $request->user()
             ->salesPages()
             ->latest()
             ->get();
 
-        return response()->json([
-            'data' => $salesPages,
-        ]);
+        return SalesPageResource::collection($salesPages);
     }
 
     /**
      * Create a new sales page and generate AI copy via Gemini.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreSalesPageRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'product_name'        => 'required|string|max:255',
-            'product_description' => 'required|string',
-            'target_audience'     => 'required|string|max:255',
-            'price'               => 'nullable|numeric|min:0',
-            'features'            => 'nullable|array',
-            'features.*'          => 'string',
-            'usp'                 => 'nullable|array',
-            'usp.*'               => 'string',
-            'template_name'       => 'nullable|string|max:100',
-            'images'              => 'nullable|array',
-            'images.*'            => 'url',
-            'language'            => 'nullable|string|in:id,en',
-            'currency'            => 'nullable|string|in:IDR,USD',
-        ]);
-
         try {
-            $aiOutput = $this->gemini->generateSalesPage($validated);
+            $salesPage = $this->service->createForUser($request->user(), $request->validated());
+
+            return (new SalesPageResource($salesPage))
+                ->additional(['message' => 'Sales page created successfully.'])
+                ->response()
+                ->setStatusCode(201);
         } catch (Exception $e) {
-            \Log::error('Gemini AI Generation Failed', [
-                'user_id' => auth()->id(),
-                'input_data' => $validated,
-                'error_message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(), // Optional: kalau mau lihat kodingan mana yang error
+            \Log::error('Sales Page Creation Failed', [
+                'user_id' => $request->user()->id,
+                'error'   => $e->getMessage()
             ]);
 
             return response()->json([
@@ -64,84 +53,35 @@ class SalesPageController extends Controller
                 'error'   => $e->getMessage(),
             ], 502);
         }
-
-        $salesPage = $request->user()->salesPages()->create([
-            'product_name'        => $validated['product_name'],
-            'product_description' => $validated['product_description'],
-            'target_audience'     => $validated['target_audience'],
-            'price'               => $validated['price'] ?? null,
-            'features'            => $validated['features'] ?? [],
-            'usp'                 => $validated['usp'] ?? [],
-            'ai_output'           => $aiOutput,
-            'template_name'       => $validated['template_name'] ?? 'modern',
-            'images'              => $validated['images'] ?? [],
-            'language'            => $validated['language'] ?? 'en',
-            'currency'            => $validated['currency'] ?? 'USD',
-        ]);
-
-        return response()->json([
-            'message' => 'Sales page created successfully.',
-            'data'    => $salesPage,
-        ], 201);
     }
 
     /**
      * Show a single sales page.
      */
-    public function show(Request $request, SalesPage $salesPage): JsonResponse
+    public function show(SalesPage $salesPage): SalesPageResource
     {
-        $this->authorizeOwner($request, $salesPage);
+        $this->authorize('view', $salesPage);
 
-        return response()->json([
-            'data' => $salesPage,
-        ]);
+        return new SalesPageResource($salesPage);
     }
 
     /**
      * Update product details and AI copy.
      */
-    public function update(Request $request, SalesPage $salesPage): JsonResponse
+    public function update(UpdateSalesPageRequest $request, SalesPage $salesPage): JsonResponse
     {
-        $this->authorizeOwner($request, $salesPage);
+        try {
+            $updatedPage = $this->service->updatePage($salesPage, $request->validated());
 
-        $validated = $request->validate([
-            'product_name'        => 'sometimes|required|string|max:255',
-            'product_description' => 'sometimes|required|string',
-            'target_audience'     => 'sometimes|required|string|max:255',
-            'price'               => 'nullable|numeric|min:0',
-            'features'            => 'nullable|array',
-            'features.*'          => 'string',
-            'usp'                 => 'nullable|array',
-            'usp.*'               => 'string',
-            'template_name'       => 'nullable|string|max:100',
-            'images'              => 'nullable|array',
-            'images.*'            => 'url',
-            'language'            => 'nullable|string|in:id,en',
-            'currency'            => 'nullable|string|in:IDR,USD',
-            'ai_output'           => 'nullable|array', // Allow manual update of AI content
-            'regenerate'          => 'boolean',        // pass true to re-generate AI copy and SAVE it immediately
-        ]);
-
-        $salesPage->fill($validated);
-
-        // Re-generate AI output if requested (and save immediately)
-        if ($request->boolean('regenerate', false)) {
-            try {
-                $salesPage->ai_output = $this->gemini->generateSalesPage($salesPage->toArray());
-            } catch (Exception $e) {
-                return response()->json([
-                    'message' => 'AI re-generation failed.',
-                    'error'   => $e->getMessage(),
-                ], 502);
-            }
+            return (new SalesPageResource($updatedPage))
+                ->additional(['message' => 'Sales page updated successfully.'])
+                ->response();
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => 'Update failed.',
+                'error'   => $e->getMessage(),
+            ], 502);
         }
-
-        $salesPage->save();
-
-        return response()->json([
-            'message' => 'Sales page updated successfully.',
-            'data'    => $salesPage,
-        ]);
     }
 
     /**
@@ -149,16 +89,10 @@ class SalesPageController extends Controller
      */
     public function generatePreview(Request $request, SalesPage $salesPage): JsonResponse
     {
-        $this->authorizeOwner($request, $salesPage);
-
-        // Optionally take updated data to generate from
-        $data = $request->all();
-        
-        // Merge with existing data to ensure all required fields for generation are present
-        $generationData = array_merge($salesPage->toArray(), $data);
+        $this->authorize('update', $salesPage);
 
         try {
-            $aiOutput = $this->gemini->generateSalesPage($generationData);
+            $aiOutput = $this->service->generatePreview($salesPage, $request->all());
             
             return response()->json([
                 'message' => 'AI preview generated successfully.',
@@ -175,24 +109,14 @@ class SalesPageController extends Controller
     /**
      * Delete a sales page.
      */
-    public function destroy(Request $request, SalesPage $salesPage): JsonResponse
+    public function destroy(SalesPage $salesPage): JsonResponse
     {
-        $this->authorizeOwner($request, $salesPage);
+        $this->authorize('delete', $salesPage);
 
         $salesPage->delete();
 
         return response()->json([
             'message' => 'Sales page deleted successfully.',
         ]);
-    }
-
-    /**
-     * Ensure the authenticated user owns the sales page.
-     */
-    private function authorizeOwner(Request $request, SalesPage $salesPage): void
-    {
-        if ($salesPage->user_id !== $request->user()->id) {
-            abort(403, 'Unauthorized action.');
-        }
     }
 }
