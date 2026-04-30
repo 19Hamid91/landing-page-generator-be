@@ -43,6 +43,10 @@ class SalesPageController extends Controller
             'usp'                 => 'nullable|array',
             'usp.*'               => 'string',
             'template_name'       => 'nullable|string|max:100',
+            'images'              => 'nullable|array',
+            'images.*'            => 'url',
+            'language'            => 'nullable|string|in:id,en',
+            'currency'            => 'nullable|string|in:IDR,USD',
         ]);
 
         try {
@@ -70,6 +74,9 @@ class SalesPageController extends Controller
             'usp'                 => $validated['usp'] ?? [],
             'ai_output'           => $aiOutput,
             'template_name'       => $validated['template_name'] ?? 'modern',
+            'images'              => $validated['images'] ?? [],
+            'language'            => $validated['language'] ?? 'en',
+            'currency'            => $validated['currency'] ?? 'USD',
         ]);
 
         return response()->json([
@@ -107,6 +114,10 @@ class SalesPageController extends Controller
             'usp'                 => 'nullable|array',
             'usp.*'               => 'string',
             'template_name'       => 'nullable|string|max:100',
+            'images'              => 'nullable|array',
+            'images.*'            => 'url',
+            'language'            => 'nullable|string|in:id,en',
+            'currency'            => 'nullable|string|in:IDR,USD',
             'regenerate'          => 'boolean', // pass true to re-generate AI copy
         ]);
 

@@ -19,6 +19,9 @@ class SalesPage extends Model
         'usp',
         'ai_output',
         'template_name',
+        'images',
+        'language',
+        'currency',
     ];
 
     /**
@@ -27,6 +30,7 @@ class SalesPage extends Model
     protected $casts = [
         'features'   => 'array',
         'usp'        => 'array',
+        'images'     => 'array',
         'ai_output'  => 'array',
         'price'      => 'decimal:2',
     ];
